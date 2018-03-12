@@ -1,3 +1,6 @@
 [submodule "xpdf_tools"]
 	path = xpdf_tools
 	url = https://github.com/mwgeurts/xpdf_tools
+[submodule "dicom_tools"]
+	path = dicom_tools
+	url = https://github.com/mwgeurts/dicom_tools

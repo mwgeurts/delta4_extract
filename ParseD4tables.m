@@ -1,5 +1,5 @@
-function delta4 = ParseD4tables(content)
-% ParseD4tables reads a ScandiDos Delta4 tabular export into a structure.
+function delta4 = ParseD4Tables(content)
+% ParseD4Tables reads a ScandiDos Delta4 tabular export into a structure.
 % Either a file name or a cell array of exported data can be passed to this
 % function. If a file is provided, it can be a Microsoft Excel spreadsheet
 % (where each beam is saved to a different sheet), a CSV file, or a
@@ -42,8 +42,8 @@ function delta4 = ParseD4tables(content)
 % with this program. If not, see http://www.gnu.org/licenses/.
 
 % If content is a file name with Excel extension
-if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase',true) || ...
-        endsWith(content, '.xls', 'IgnoreCase',true))
+if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase', true) || ...
+        endsWith(content, '.xls', 'IgnoreCase', true))
     
     % Get file information
     [status, sheets] = xlsfinfo(content);
@@ -181,19 +181,19 @@ while i <= length(content)
     % Store distances
     elseif startsWith(content{i}, 'Distance')
         d = cellfun(@str2double, strsplit(strtrim(content{i}(9:end)), ...
-            {'\s', ','}, 'CollapseDelimiters', false,  'DelimiterType', ...
+            {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
             'RegularExpression'));
         
     % Store IEC X
     elseif startsWith(content{i}, 'X (iec-left)')
         x = cellfun(@str2double, strsplit(strtrim(content{i}(13:end)), ...
-            {'\s', ','}, 'CollapseDelimiters', false,  'DelimiterType', ...
+            {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
             'RegularExpression'));
         
     % Store IEC Z
     elseif startsWith(content{i}, 'Z (iec-up)')
         z = cellfun(@str2double, strsplit(strtrim(content{i}(11:end)), ...
-            {'\s', ','}, 'CollapseDelimiters', false,  'DelimiterType', ...
+            {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
             'RegularExpression'));
 
     % Store data

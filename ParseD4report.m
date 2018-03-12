@@ -1,5 +1,5 @@
-function delta4 = ParseD4report(content)
-% ParseD4report reads a ScandiDos Delta4 report into a MATLAB structure.
+function delta4 = ParseD4Report(content)
+% ParseD4Report reads a ScandiDos Delta4 report into a MATLAB structure.
 % The function input argument can either be a string containing a file path
 % and/or name corresponding to a report PDF file, or a cell array of text 
 % data from that PDF. If a PDF file, this function will call XpdfText to
@@ -46,8 +46,8 @@ function delta4 = ParseD4report(content)
 %   dtaRange: 2 element vector of DTA range, in %/mm
 %   dtaPassLimit: 2 element vector of DTA acceptance criteria, in % and mm
 %   gammaRange: 2 element vector of Gamma range
-%   abs: double containing Gamma absolute criterion as a percentage
-%   dta: double containing Gamma DTA criterion in mm
+%   gammaAbs: double containing Gamma absolute criterion as a percentage
+%   gammaDta: double containing Gamma DTA criterion in mm
 %   gammaPassLimit: 2 element vector of Gamma acceptance criteria (i.e.
 %       [95 1] means 95% less than 1)
 %   gammaTable: structure containing Gamma Index Evaluation table (if
@@ -504,11 +504,10 @@ while r < length(content)
         % Store Gamma data
         delta4.gammaRange(1) = str2double(fields{1}(1));
         delta4.gammaRange(2) = str2double(fields{1}(2));
-        delta4.abs = str2double(fields{1}(3));
-        delta4.dta = str2double(fields{1}(4));
+        delta4.gammaAbs = str2double(fields{1}(3));
+        delta4.gammaDta = str2double(fields{1}(4));
         delta4.gammaPassLimit(1) = str2double(fields{1}(5));
         delta4.gammaPassLimit(2) = str2double(fields{1}(6));
-        r = r + 1;
         break;
     else
         r = r + 1;

@@ -1,4 +1,4 @@
-function delta4 = ParseD4Tables(content)
+function delta4 = ParseD4Tables(content, varargin)
 % ParseD4Tables reads a ScandiDos Delta4 tabular export into a structure.
 % Either a file name or a cell array of exported data can be passed to this
 % function. If a file is provided, it can be a Microsoft Excel spreadsheet
@@ -26,7 +26,7 @@ function delta4 = ParseD4Tables(content)
 %       value, data
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2017 University of Wisconsin Board of Regents
+% Copyright (C) 2018 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -40,6 +40,14 @@ function delta4 = ParseD4Tables(content)
 % 
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
+
+% Set default options
+opt.CenterPhantom = false;
+
+% Parse provided options
+for i = 2:2:nargin
+    opt.(varargin{i-1}) = varargin{i};
+end
 
 % If content is a file name with Excel extension
 if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase', true) || ...
@@ -107,7 +115,7 @@ if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase', true) || ...
                 for k = 2:size(num,2)
                     if ~isnan(num(j,k))
                         delta4.beams{i}.data(size(delta4.beams{i}.data,1)+1,:) = ...
-                            [num(1,k) num(2,k) num(1,j) num(3,k) num(j,k)];
+                            [num(1,k) num(2,k) num(j,1) num(3,k) num(j,k)];
                     end
                 end
             end
@@ -140,7 +148,7 @@ elseif ~iscell(content) && (endsWith(content, '.txt', 'IgnoreCase',true) ...
     clear fid;
     
 % Otherwise, if content is some unknown file extension
-elseif ~iscell(content)
+else
    if exist('Event', 'file') == 2
         Event(['Unknown format: ', content], 'ERROR');
    else
@@ -148,94 +156,98 @@ elseif ~iscell(content)
    end
 end
 
-% Initialize return variable
-delta4.beams = cell(0);
-
-% Loop through content cell array, parsing
-i = 1;
-while i <= length(content)
-
-    % Store patient name and ID
-    if startsWith(content{i}, 'Patient:')
-        fields = regexp(strtrim(content{i}(9:end)), ...
-            '^(\S+)\s+(.+)$', 'tokens');
-        delta4.ID = fields{1}{1};
-        delta4.name = fields{1}{2};
-        b = false;
-
-    % Store plan name
-    elseif startsWith(content{i}, 'Plan:')
-        delta4.plan = strtrim(content{i}(6:end));
-
-    % Store beam name
-    elseif startsWith(content{i}, 'Beam:')
-        delta4.beams{length(delta4.beams)+1}.name = ...
-            strtrim(content{i}(6:end));
-        b = true;
-
-    % Store value specifier
-    elseif startsWith(content{i}, 'Intensity values:')
-        delta4.beams{length(delta4.beams)}.value = ...
-            strtrim(content{i}(18:end));
-        
-    % Store distances
-    elseif startsWith(content{i}, 'Distance')
-        d = cellfun(@str2double, strsplit(strtrim(content{i}(9:end)), ...
-            {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
-            'RegularExpression'));
-        
-    % Store IEC X
-    elseif startsWith(content{i}, 'X (iec-left)')
-        x = cellfun(@str2double, strsplit(strtrim(content{i}(13:end)), ...
-            {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
-            'RegularExpression'));
-        
-    % Store IEC Z
-    elseif startsWith(content{i}, 'Z (iec-up)')
-        z = cellfun(@str2double, strsplit(strtrim(content{i}(11:end)), ...
-            {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
-            'RegularExpression'));
-
-    % Store data
-    elseif startsWith(content{i}, 'Y (iec-head)')
-        i = i + 1;
-        
-        % Loop through data lines
-        data = [];
-        while i <= length(content)
-            if regexp(content{i}, '^[0-9]')
-                row = cellfun(@str2double, strsplit(strtrim(content{i}), ...
-                    {'\s', ','}, 'CollapseDelimiters', false, ...
-                    'DelimiterType', 'RegularExpression'));
-                for j = 1:length(row)-1
-                    if ~isnan(row(j+1))
-                        data(size(data,1)+1,:) = ...
-                            [d(j) x(j) row(1) z(j) row(j+1)]; %#ok<*AGROW>
-                    end
-                end
-            elseif startsWith(content{i}, 'Patient:')
-                break;
-            end
-            i = i + 1;
-        end
-        
-        % Scale data to Gy
-        if contains(delta4.beams{length(delta4.beams)}.value, '[cGy]', ...
-                'IgnoreCase', true)
-            data(:,5) = data(:,5)/100;
-        end
-        
-        % Store beam or plan data 
-        if b
-            delta4.beams{length(delta4.beams)}.data = data;
-        else
-            delta4.data = data;
-        end
-        i = i - 1;
-    end
+% If text contents exist
+if iscell(content)
     
-    % Increment counter
-    i = i + 1;
+    % Initialize return variable
+    delta4.beams = cell(0);
+
+    % Loop through content cell array, parsing
+    i = 1;
+    while i <= length(content)
+
+        % Store patient name and ID
+        if startsWith(content{i}, 'Patient:')
+            fields = regexp(strtrim(content{i}(9:end)), ...
+                '^(\S+)\s+(.+)$', 'tokens');
+            delta4.ID = fields{1}{1};
+            delta4.name = fields{1}{2};
+            b = false;
+
+        % Store plan name
+        elseif startsWith(content{i}, 'Plan:')
+            delta4.plan = strtrim(content{i}(6:end));
+
+        % Store beam name
+        elseif startsWith(content{i}, 'Beam:')
+            delta4.beams{length(delta4.beams)+1}.name = ...
+                strtrim(content{i}(6:end));
+            b = true;
+
+        % Store value specifier
+        elseif startsWith(content{i}, 'Intensity values:')
+            delta4.beams{length(delta4.beams)}.value = ...
+                strtrim(content{i}(18:end));
+
+        % Store distances
+        elseif startsWith(content{i}, 'Distance')
+            d = cellfun(@str2double, strsplit(strtrim(content{i}(9:end)), ...
+                {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
+                'RegularExpression'));
+
+        % Store IEC X
+        elseif startsWith(content{i}, 'X (iec-left)')
+            x = cellfun(@str2double, strsplit(strtrim(content{i}(13:end)), ...
+                {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
+                'RegularExpression'));
+
+        % Store IEC Z
+        elseif startsWith(content{i}, 'Z (iec-up)')
+            z = cellfun(@str2double, strsplit(strtrim(content{i}(11:end)), ...
+                {'\s', ','}, 'CollapseDelimiters', false, 'DelimiterType', ...
+                'RegularExpression'));
+
+        % Store data
+        elseif startsWith(content{i}, 'Y (iec-head)')
+            i = i + 1;
+
+            % Loop through data lines
+            data = [];
+            while i <= length(content)
+                if regexp(content{i}, '^[0-9]')
+                    row = cellfun(@str2double, strsplit(strtrim(content{i}), ...
+                        {'\s', ','}, 'CollapseDelimiters', false, ...
+                        'DelimiterType', 'RegularExpression'));
+                    for j = 1:length(row)-1
+                        if ~isnan(row(j+1))
+                            data(size(data,1)+1,:) = ...
+                                [d(j) x(j) row(1) z(j) row(j+1)]; %#ok<*AGROW>
+                        end
+                    end
+                elseif startsWith(content{i}, 'Patient:')
+                    break;
+                end
+                i = i + 1;
+            end
+
+            % Scale data to Gy
+            if contains(delta4.beams{length(delta4.beams)}.value, '[cGy]', ...
+                    'IgnoreCase', true)
+                data(:,5) = data(:,5)/100;
+            end
+
+            % Store beam or plan data 
+            if b
+                delta4.beams{length(delta4.beams)}.data = data;
+            else
+                delta4.data = data;
+            end
+            i = i - 1;
+        end
+
+        % Increment counter
+        i = i + 1;
+    end
 end
 
 % Remove empty beam names
@@ -256,9 +268,33 @@ if ~isfield(delta4, 'data') && length(delta4.beams) >= 1 ...
         'Absolute dose', 'IgnoreCase', true)
     delta4.data = delta4.beams{1}.data;
     delta4.value = delta4.beams{1}.value;
-    for j = 2:length(delta4.beams)
-        if isfield(delta4.beams{j}, 'data')
-            delta4.data(:,5) = delta4.data(:,5) + delta4.beams{j}.data(:,5);
+    for i = 2:length(delta4.beams)
+        if isfield(delta4.beams{i}, 'data')
+            delta4.data(:,5) = delta4.data(:,5) + delta4.beams{i}.data(:,5);
+        end
+    end
+end
+
+% If center flag is enabled, center the phantom axially
+if opt.CenterPhantom == 1
+    
+    % Center plan data
+    if isfield(delta4, 'data')
+        delta4.data(:,2) = delta4.data(:,2) - ...
+            (max(delta4.data(:,2)) + min(delta4.data(:,2)))/2;
+        delta4.data(:,4) = delta4.data(:,4) - ...
+            (max(delta4.data(:,4)) + min(delta4.data(:,4)))/2;
+    end
+    
+    % Center beams
+    for i = 1:length(delta4.beams)
+        if isfield(delta4.beams{i}, 'data')
+            delta4.beams{i}.data(:,2) = delta4.beams{i}.data(:,2) - ...
+                (max(delta4.beams{i}.data(:,2)) + ...
+                min(delta4.beams{i}.data(:,2)))/2;
+            delta4.beams{i}.data(:,4) = delta4.beams{i}.data(:,4) - ...
+                (max(delta4.beams{i}.data(:,4)) + ...
+                min(delta4.beams{i}.data(:,4)))/2;
         end
     end
 end

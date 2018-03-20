@@ -20,7 +20,7 @@ function results = CompareD4Dose(varargin)
 % associated case insensitive regular expressions to match to the plan 
 % name. If provided, the function will attempt to categorize each 
 % measurement into a plan class, then compare each plan type. Note, each 
-% plan is only matched to the first class that matches the.
+% plan is only matched to the first class that matches the regexp.
 %
 % The following required and optional inputs are available for this
 % function:
@@ -39,9 +39,11 @@ function results = CompareD4Dose(varargin)
 %       to a Delta4 report structure obtained from ParseD4Report. In this 
 %       case, all relevant configuration options will be set to match what 
 %       was set in the report. This is helpful when trying to replicate the 
-%       same analysis as was performed in the Delta4 software. Finally, the 
-%       name/pair 'BeamStats' => false can be provided to skip computation 
-%       of individual beam statistics.
+%       same analysis as was performed in the Delta4 software. The 
+%       name/value pair 'BeamAnalysis' => false can be provided to skip 
+%       computation of individual beam statistics. Finally, a plan class
+%       cell array can also be provided using 'planClasses', as described
+%       above.
 %
 % Upon successfu completion, a structure is returned with the following
 % fields:
@@ -62,7 +64,38 @@ function results = CompareD4Dose(varargin)
 %       reference dose to be included in absolute dose difference
 %   plans: table with one row for each plan matched to a dose volume
 %   beams: table with one row for each beam matched to a dose volume
-%
+%   stats: table of the following parameter statistics (Gamma mean and pass 
+%       rate, median dose difference) for the full dataset as well as each
+%       subset: parameter, group, N (dataset size), min, median, mean,
+%       trimmean (using 0.2 threshold), max, sd, lilliefors normality
+%       p-value, skewness, and kurtosis. For this and other grouped
+%       statistics, the "group" column contains a description of the
+%       subset, where groups can be machine, beam energy, phantom
+%       orientation, or plan class.
+%   levene: table p-values for Levene's test comparing variance between 
+%       groups, with each parameter as a column and each group category
+%       (machine, energy, etc.) as a row.
+%   kruskal: table p-values for Kruskal-Wallis rank test, with each 
+%       parameter as a column and each group category (machine, energy, 
+%       etc.) as a row.
+%   dunnRanks: table of Dunn's multiple comparison test statistics based on 
+%       Kruskal-Wallis groups. Columns include parameter, groupA, groupB, 
+%       the standard error of each, median rank, rank difference, 
+%       confidence intervals, and p-value.
+%   anova: table of multi-group interaction ANOVA p-values, with each
+%       parameter as a column and each interacting group as a row. In
+%       addition to the groups used for basic stastical analysis, the
+%       volume of the reference dose falling within the median absolute
+%       range is included as a continuous variable.
+%   dunnMeans: table of Dunn's multiple comparison test statistics based on 
+%       the ANOVA groups. Columns include parameter, groupA, groupB, the 
+%       standard error of each, mean, mean difference, confidence 
+%       intervals, and p-value.
+%   manova: table of p-values and MANOVA test statistics for each group.
+%   pairwiseB: if a second reference dataset is provided, a table of two-
+%       tailed Welch's t-test stastistics (p-value, diff, se, t-statistic)
+%       between the two reference points.
+%   
 % The following example illustrates how to use this function:
 %
 % % Define folder containing Delta4 measurements
@@ -75,12 +108,13 @@ function results = CompareD4Dose(varargin)
 % % Execute evaluation, using folders above and 2%/2mm criteria
 % results = CompareD4Dose(meas, tps, [], 'gammaAbs', 2, 'gammaDta', 2);
 %
-% % Extract pass rates for all plans using 'TrueBeam' and 6 MV
+% % Extract a vector of pass rates for all plans using 'TrueBeam' and 6 MV
 % pass = results.plans.gammaPassRateGlobal(strcmp(results.plans.machine, ...
 %   'TrueBeam') & results.plans.energy == 6);
 %
-% % Compute percentage of plans with 95% pass rate or greater
-% sum(pass > 1)/length(pass)*100
+% % Find the mean local Gamma pass rate for all plans
+% avg = results.stats.mean(strcmp(results.stats.parameter, ...
+%       'gammaPassRateLocal') & strcmp(results.stats.group, 'all'));
 %
 % % Plot a scatter plot matric of the local pass rate, mean gamma, and 
 % % median absolute difference grouped by machine
@@ -91,6 +125,11 @@ function results = CompareD4Dose(varargin)
 %
 % % Compare the pass rates between the original and a new TPS model
 % pairwise = CompareD4Dose(meas, tps, '../test_data/new_model/');
+%
+% % Determine if the median absolute dose difference changed significantly
+% % between the two models based on the t-test p-value
+% pval = results.pairwiseB.p(strcmp(results.stats.parameter, ...
+%       'medianAbsDiff') & strcmp(results.stats.group, 'all'));
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2018 University of Wisconsin Board of Regents
@@ -119,12 +158,12 @@ end
 results.Progress = true;
 results.alpha = 0.05;
 results.absRange = [50 500];
-results.gammaAbs = 1:3;
-results.gammaDta = 1:3;
+results.gammaAbs = 3;
+results.gammaDta = 3;
 results.gammaRange = [20 500];
 results.gammaLimit = 2;
 results.gammaRes = 10;
-results.BeamStats = true;
+results.BeamAnalysis = true;
 results.refDose = 'measmax';
 results.planClasses = cell(0,2);
 
@@ -232,7 +271,7 @@ else
         for j = 1:length(varNames)
             
             % Append a letter (A, B, C, ...) onto each variable name
-            v{(i-1)*length(varNames)+j} = [varNames{j}, char(i + 64)];
+            v{(i-1)*length(varNames)+j} = [varNames{j}, char(i+64)];
             u{(i-1)*length(varNames)+j} = varUnits{j};
         end
     end
@@ -242,7 +281,7 @@ end
 results.plans = array2table(zeros(0,length(fixedNames)+length(v)), ...
     'VariableNames', horzcat(fixedNames, v));
 results.plans.Properties.VariableUnits = horzcat(fixedUnits, u);
-if results.BeamStats
+if results.BeamAnalysis
     results.beams = array2table(zeros(0,1+length(fixedNames)+length(v)), ...
         'VariableNames', horzcat(fixedNames, {'Beam'}, v));
     results.beams.Properties.VariableUnits = horzcat(fixedUnits, {''}, u);
@@ -260,10 +299,11 @@ catch
     end
 end
 
-%% Process measurements
+%% %%%%%%%%%%%%%%%%%%%%%%% Process measurements %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Loop through measurement list
 for i = 1:length(meas)
 
+    %% Parse measurement
     % Update waitbar
     if exist('progress', 'var') && ishandle(progress) && results.Progress
         waitbar(0.2 + 0.7*i/length(meas), progress, ...
@@ -329,7 +369,8 @@ for i = 1:length(meas)
     % Initialize plan IDs
     matched = zeros(1, length(ref));
     
-    % If parse was successful, match plan to reference dose files
+    %% Match plan to reference dose files
+    % Loop through each reference cell array
     for r = 1:length(ref)
         for j = 1:length(ref{r})
         
@@ -409,8 +450,9 @@ for i = 1:length(meas)
         end
     end
 
-    % Next, match each beam to reference dose files
-    if results.BeamStats && isfield(delta4, 'beams')
+    %% Match each beam to reference dose files
+    % Next, if beams exist
+    if results.BeamAnalysis && isfield(delta4, 'beams')
         
         % Loop through measured beam data
         for b = 1:length(delta4.beams)
@@ -497,13 +539,25 @@ end
 
 % Clear temporary variables
 clear b i j r t u v nd nr class delta4 dose path name ext fixedNames fixedUnits ... 
-    matched meas refval result varNames varUnits;
+    matched meas refval result varNames varUnits orient;
 
-%% Compute statistics
+%% %%%%%%%%%%%%%%%%%%%%%%% Compute statistics %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if size(results.plans,1) < 1
+    if exist('progress', 'var') == 1 && ishandle(progress)
+        close(progress);
+    end
+    if exist('Event', 'file') == 2
+        Event('No plans were found with matching dose data', 'WARN');
+    else
+        warning('No plans were found with matching dose data');
+    end
+    return;
+end
+
 if exist('progress', 'var') && ishandle(progress) && results.Progress
     waitbar(0.91, progress, 'Computing statistics');
 end
-    
+
 % Define parameters to be statistically tested
 params = {'gammaPassRateGlobal', 'gammaMeanGlobal', 'gammaPassRateLocal', ...
     'gammaMeanLocal', 'medianAbsDiff'};
@@ -518,54 +572,137 @@ end
 
 % Define groups to be tested, and unique values in each
 groups = {'machine', 'energy', 'planClass', 'orientation'};
-groupVals{1} = unique(results.plans.machine);
-if isfield(results, 'beams') && ~isempty(results.beams)
-    groupVals{2} = unique(results.beams.energy);
-else
-    groupVals{2} = unique(results.plans.energy);
-end
-groupVals{3} = unique(results.plans.planClass);
-groupVals{4} = unique(results.plans.orientation);
-
-% Compute group statistics tables
+indices = cell(1,4);
 for i = 1:length(groups)
-    if exist('Event', 'file') == 2
-        Event(['Computing basic statistics for group ', groups{i}]);
+    
+    % For energy, use beam energies (plans contain average energy)
+    if strcmp(groups{i}, 'energy')
+        if isfield(results, 'beams') && ~isempty(results.beams)
+            groupVals{i} = unique(results.beams.(groups{i}));
+        else
+            groupVals{i} = unique(results.plans.(groups{i}));
+        end
+    else
+        groupVals{i} = unique(results.plans.(groups{i}));
     end
-    results.(groups{i}) = cell(9,length(params));
+    indices{i} = 1:length(groupVals{i});
+end
+
+% Remove groups with only one unique value
+groups = groups(cellfun(@length, groupVals) > 1);
+groupVals = groupVals(cellfun(@length, groupVals) > 1);
+
+% Compute all combinations of groups
+groupDims = cell(0);
+for i = 1:length(groups)
+    a = nchoosek(1:length(groups),i);
+    for j = 1:size(a,1)
+        groupDims{length(groupDims)+1} = a(j,:);
+    end
+end
+
+% Compute permutations of each combination
+e = cell(length(groupDims),length(groups));
+for i = 1:length(groupDims)
+    for j = 1:length(groupDims{i})
+        e{i,groupDims{i}(j)} = 1:length(groupVals{groupDims{i}(j)});
+    end
+end
+e(cellfun(@isempty, e)) = {0};
+groupCombs = zeros(1,length(groups));
+for i = 1:size(e,1)
+    c = cell(1, length(e(i,:)));
+    [c{:}] = ndgrid(e{i,:});
+    c = cellfun(@(x) x(:), c, 'uniformoutput', false);
+    groupCombs = [groupCombs; [c{:}]];
+end
+
+%% Compute group statistics tables
+% Initialize array
+results.stats = array2table(zeros(0,12), ...
+    'VariableNames', {'parameter', 'group', 'N', 'min', 'median', 'mean', ...
+    'trimmean', 'max', 'sd', 'lilliefors', 'skewness', 'kurtosis'});
+
+% Temporarily suppress warnings (mainly for the Lilliefors test)
+w = warning('off','all');
+
+% Loop through each permutation
+for i = 1:size(groupCombs,1)
+    
+    % Initialize index vector and group name
+    match = true(size(results.plans,1),1);
+    g = cell(0);
+    
+    % Loop through each group
+    for j = 1:size(groupCombs,2)
+        
+        % If non-zero, match only provided group
+        if groupCombs(i,j) > 0
+            if isnumeric(groupVals{j}(groupCombs(i,j)))
+                match = match & (results.plans.(groups{j}) == ...
+                    groupVals{j}(groupCombs(i,j)));
+                g{length(g)+1} = [groups{j}, '=', ...
+                    num2str(groupVals{j}(groupCombs(i,j)))];
+            else
+                match = match & strcmp(results.plans.(groups{j}), ...
+                    groupVals{j}(groupCombs(i,j)));
+                g{length(g)+1} = [groups{j}, '=', ...
+                    groupVals{j}{groupCombs(i,j)}];
+            end
+        end
+    end
+    
+    % If everything is matched, use 'all' for group name
+    if isempty(g)
+        g{1} = 'all';
+    end
+    
+    % Loop through each parameter
     for j = 1:length(params)
+
+        % If this parameter is a cell array
         if iscell(results.plans.(params{j})(1))
-            x = cell2mat(permute(results.plans.(params{j}),[3 2 1]));
+            x = cell2mat(permute(results.plans.(params{j})(match),[3 2 1]));
             p = zeros(size(x,1),size(x,2));
             for k = 1:size(x,1)
                 for l = 1:size(x,2)
-                    [~, p(k,l)] = lillietest(squeeze(x(k,l,:)));
+                    try
+                        [~, p(k,l)] = lillietest(squeeze(x(k,l,:)));
+                    catch
+                        p(k,l) = NaN;
+                    end
                 end
             end
             s = skewness(x,0,3);
             k = kurtosis(x,0,3);
-            results.(groups{i})(:,j) = {min(x,[],3) median(x,3) ...
-                mean(x,3) trimmean(x,0.2,3) max(x,[],3) std(x,0,3) p s k}';
+            results.stats = [results.stats; {params{j}, strjoin(g, ','), ...
+                length(x), min(x,[],3), median(x,3), mean(x,3), ...
+                trimmean(x,0.2,3), max(x,[],3), std(x,0,3), p, s, k}];
         else
-            x = results.plans.(params{j});
-            [~, p] = lillietest(x);
+            x = results.plans.(params{j})(match);
+            try
+                [~, p] = lillietest(x);
+            catch
+                p = NaN;
+            end
             s = skewness(x,0);
             k = kurtosis(x,0);
-            results.(groups{i})(:,j) = {min(x) median(x) mean(x) ...
-                trimmean(x,0.2) max(x) std(x) p s k}';
+            results.stats = [results.stats; {params{j}, strjoin(g, ','), ...
+                length(x), min(x), median(x), mean(x), trimmean(x,0.2), ...
+                max(x), std(x), p, s, k}];
         end
     end
-    results.(groups{i}) = cell2table(results.(groups{i}), ...
-        'RowNames', {'Min', 'Median', 'Mean', ...
-        'TrimMean', 'Max', 'StdDev', 'Lilliefors', 'Skewness', 'Kurtosis'}, ...
-        'VariableNames', params);
 end
 
+% Restore original warning state
+warning(w);
+
+% Move progress bar forward
 if exist('progress', 'var') && ishandle(progress) && results.Progress
     waitbar(0.93, progress);
 end
 
-% Compute Levene's test for equal variance
+%% Compute Levene's test for equal variance
 results.levene = array2table(zeros(length(groups), length(params)), ...
     'VariableNames', params, 'RowNames', groups);
 for i = 1:length(groups)
@@ -605,7 +742,7 @@ if exist('progress', 'var') && ishandle(progress) && results.Progress
     waitbar(0.95, progress);
 end
 
-% Compute plan Kruskal Wallis tests for each parameter, group
+%% Compute plan Kruskal Wallis tests for each parameter, group
 results.kruskal = array2table(zeros(length(groups), length(params)), ...
     'VariableNames', params, 'RowNames', groups);
 results.dunnRanks = array2table(zeros(0,11), 'VariableNames', {'parameter', ...
@@ -657,7 +794,7 @@ if exist('progress', 'var') && ishandle(progress) && results.Progress
     waitbar(0.97, progress);
 end
 
-% Compute plan level multi-group ANOVA for each parameter
+%% Compute plan level multi-group ANOVA for each parameter
 x = nan(size(results.plans,1), length(params));
 for i = 1:size(results.plans,1)
     ingroup = true;
@@ -681,12 +818,13 @@ g = cell(1, length(groups)+1);
 for i = 1:length(groups) 
     g{i} = results.plans.(groups{i})(any(~isnan(x),2));
 end
-% Add abs volume
 if length(ref) == 1
     g{length(groups)+1} = results.plans.absVolume(any(~isnan(x),2));
 else
-    g{length(groups)+1} = results.plans.absVolumeA(any(~isnan(x),2));
+    g{length(groups)+1} = ...
+        results.plans.(['absVolume', char(65)])(any(~isnan(x),2));
 end
+terms = [groups 'absVolume'];
 x = x(any(~isnan(x),2),:);
 results.anova = array2table(zeros(nchoosek(length(groups)+1,1) + ...
     nchoosek(length(groups)+1,2), length(params)), 'VariableNames', params);
@@ -703,19 +841,13 @@ for i = 1:length(params)
         results.anova{:,i} = p;
         for j = 1:size(stats.terms,1)
             results.anova.Properties.RowNames{j} = ...
-                strjoin(groups(stats.terms(j,:) == 1), ' & ');
+                strjoin(terms(stats.terms(j,:) == 1), ',');
         end
-        dims = cell(0);
-        for j = 1:length(stats.grpnames)
-            a = nchoosek(1:length(stats.grpnames),j);
-            for k = 1:size(a,1)
-                dims{length(dims)+1} = a(k,:);
-            end
-        end
+        dims = groupDims;
         for j = 1:length(stats.grpnames)
             if length(stats.grpnames{j}) == 1
                 for k = 1:length(dims)
-                    if ismember(j, dims{k})
+                    if ~isempty(dims{k}) && ismember(j, dims{k})
                         dims{k} = {};
                     end
                 end
@@ -748,7 +880,7 @@ if exist('progress', 'var') && ishandle(progress) && results.Progress
     waitbar(0.99, progress);
 end
 
-% Compute plan level MANOVA for each group
+%% Compute plan level MANOVA for each group
 results.manova = cell(length(groups), 17);
 for i = 1:length(groups)
     if exist('Event', 'file') == 2
@@ -800,6 +932,100 @@ results.manova = cell2table(results.manova, 'RowNames', groups, ...
     'lambda', 'chisq', 'chisqdf', 'eigenval', 'eigenvec', 'canon', 'mdist', ...
     'gmdist', 'gnames'});
 
+%% Compute pairwise t-tests
+for r = 2:length(ref)
+    
+    % Initialize results table
+    results.(['pairwise', char(r+64)]) = array2table(zeros(0,9), ...
+        'VariableNames', {'parameter', 'group', 'N', 'se', ...
+        'lowerCI', 'diff', 'upperCI', 'tstat', 'p'});
+    
+    % Loop through each permutation
+    for i = 1:size(groupCombs,1)
+
+        % Initialize index vector and group name
+        match = true(size(results.plans,1),1);
+        g = cell(0);
+
+        % Loop through each group
+        for j = 1:size(groupCombs,2)
+
+            % If non-zero, match only provided group
+            if groupCombs(i,j) > 0
+                if isnumeric(groupVals{j}(groupCombs(i,j)))
+                    match = match & (results.plans.(groups{j}) == ...
+                        groupVals{j}(groupCombs(i,j)));
+                    g{length(g)+1} = [groups{j}, '=', ...
+                        num2str(groupVals{j}(groupCombs(i,j)))];
+                else
+                    match = match & strcmp(results.plans.(groups{j}), ...
+                        groupVals{j}(groupCombs(i,j)));
+                    g{length(g)+1} = [groups{j}, '=', ...
+                        groupVals{j}{groupCombs(i,j)}];
+                end
+            end
+        end
+
+        % If everything is matched, use 'all' for group name
+        if isempty(g)
+            g{1} = 'all';
+        end
+
+        % Loop through each parameter
+        for j = 1:length(params)
+
+            % If this parameter is a cell array
+            if iscell(results.plans.(params{j})(1))
+                
+                % Store matched refA and refB parameters
+                x = cell2mat(permute(results.plans.(params{j})(match),[3 2 1]));
+                y = cell2mat(permute(results.plans...
+                    .([params{j}(1:end-1), char(r+64)])(match),[3 2 1]));
+                
+                % Initialize arrays to store parameters 
+                s = nan(size(x,1),size(x,2),6);
+                for k = 1:size(x,1)
+                    for l = 1:size(x,2)
+                        try
+                            [~, p, ci, stats] = ttest(x(k,l,:), y(k,l,:), ...
+                                'Alpha', results.alpha, 'Dim', 3, 'Tail', ...
+                                'both');
+                            s(k,l,1) = stats.sd/sqrt(length(x));
+                            s(k,l,2) = ci(1);
+                            s(k,l,3) = mean(x(k,l,:)-y(k,l,:),3);
+                            s(k,l,4) = ci(2);
+                            s(k,l,5) = stats.tstat;
+                            s(k,l,6) = p;
+                        catch
+                        end
+                    end
+                end
+                results.(['pairwise', char(r+64)]) = ...
+                    [results.(['pairwise', char(r+64)]); ... 
+                    {params{j}, strjoin(g, ','), length(x), s(:,:,1), ...
+                    s(:,:,2), s(:,:,3), s(:,:,4), s(:,:,5), s(:,:,6)}];
+            else
+                x = results.plans.(params{j})(match);
+                y = results.plans.([params{j}(1:end-1), char(r+64)])(match);
+                try
+                    [~, p, ci, stats] = ttest(x, y, 'Alpha', results.alpha, ...
+                        'Tail', 'both');
+                catch
+                    ci = [NaN NaN];
+                    p = NaN;
+                    stats.tstat = NaN;
+                    stats.sd = NaN;
+                end
+                results.(['pairwise', char(r+64)]) = ...
+                    [results.(['pairwise', char(r+64)]); ...
+                    {params{j}, strjoin(g, ','), length(x), ...
+                    stats.sd/sqrt(length(x)), ci(1), mean(x-y), ci(2), ...
+                    stats.tstat, p}];
+            end
+        end
+    end
+end
+
 %% Finish up
 % Close waitbar
 if exist('progress', 'var') == 1 && ishandle(progress)
@@ -807,9 +1033,9 @@ if exist('progress', 'var') == 1 && ishandle(progress)
     close(progress);
 end
 
-% Remove Progress and BeamStats field from results
+% Remove Progress and BeamAnalysis field from results
 results = rmfield(results, 'Progress');
-results = rmfield(results, 'BeamStats');
+results = rmfield(results, 'BeamAnalysis');
 
 % Log completion
 if exist('Event', 'file') == 2

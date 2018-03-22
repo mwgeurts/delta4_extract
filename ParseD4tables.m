@@ -13,16 +13,16 @@ function delta4 = ParseD4Tables(content, varargin)
 %
 % Upon successful completion, the function will return a structure
 % containing the following fields:
-%   name: string containing patient name
+%   Name: string containing patient name
 %   ID: string containing patient ID
-%   plan: string containing plan name
-%   data: n x 5 matrix of plan level data (or sum of beam data if absolute 
+%   Plan: string containing plan name
+%   Data: n x 5 matrix of plan level data (or sum of beam data if absolute 
 %       dose), where column 1 is distance from phantom center, column 2 is
 %       the IEC X position, column 3 is IEC Y, column 4 is IEC Z, and
 %       column 5 is the diode data. If the data is stored in cGy, it is
 %       converted to Gy.
-%   value: string describing the stored data (i.e. Absolute dose in [Gy])
-%   beams: cell array of structures containing the following fields: name,
+%   Value: string describing the stored data (i.e. Absolute dose in [Gy])
+%   Beams: cell array of structures containing the following fields: name,
 %       value, data
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
@@ -79,30 +79,30 @@ if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase', true) || ...
                 fields = regexp(strtrim(txt{j,1}(9:end)), ...
                     '^(\S+)\s+(.+)$', 'tokens');
                 delta4.ID = fields{1}{1};
-                delta4.name = fields{1}{2};
+                delta4.Name = fields{1}{2};
                 
             % Store plan name
             elseif startsWith(txt{j,1}, 'Plan:')
-                delta4.plan = strtrim(txt{j,1}(6:end));
+                delta4.Plan = strtrim(txt{j,1}(6:end));
                 
             % Store beam name
             elseif startsWith(txt{j,1}, 'Beam:')
-                delta4.beams{i}.name = strtrim(txt{j,1}(6:end));
+                delta4.Beams{i}.name = strtrim(txt{j,1}(6:end));
             
             % Store value specifier
             elseif startsWith(txt{j,1}, 'Intensity values:')
-                delta4.beams{i}.value = strtrim(txt{j,1}(18:end));
+                delta4.Beams{i}.Value = strtrim(txt{j,1}(18:end));
                 break;
             end
         end
         
         % If a beam name was not present, assume this is the plan data
-        if ~isfield(delta4.beams{i}, 'name')
-            delta4.data = [];
+        if ~isfield(delta4.Beams{i}, 'name')
+            delta4.Data = [];
             for j = 5:size(num,1)
                 for k = 2:size(num,2)
                     if ~isnan(num(j,k))
-                        delta4.data(size(delta4.data,1)+1,:) = ...
+                        delta4.Data(size(delta4.Data,1)+1,:) = ...
                             [num(1,k) num(2,k) num(1,j) num(3,k) num(j,k)];
                     end
                 end
@@ -110,11 +110,11 @@ if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase', true) || ...
             
         % Otherwise, store as beam data    
         else
-            delta4.beams{i}.data = [];
+            delta4.Beams{i}.Data = [];
             for j = 5:size(num,1)
                 for k = 2:size(num,2)
                     if ~isnan(num(j,k))
-                        delta4.beams{i}.data(size(delta4.beams{i}.data,1)+1,:) = ...
+                        delta4.Beams{i}.Data(size(delta4.Beams{i}.Data,1)+1,:) = ...
                             [num(1,k) num(2,k) num(j,1) num(3,k) num(j,k)];
                     end
                 end
@@ -122,8 +122,8 @@ if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase', true) || ...
         end
         
         % Scale data to Gy
-        if contains(delta4.beams{i}.value, '[cGy]', 'IgnoreCase', true)
-            delta4.beams{i}.data(:,5) = delta4.beams{i}.data(:,5)/100;
+        if contains(delta4.Beams{i}.Value, '[cGy]', 'IgnoreCase', true)
+            delta4.Beams{i}.Data(:,5) = delta4.Beams{i}.Data(:,5)/100;
         end
     end
     
@@ -160,7 +160,7 @@ end
 if iscell(content)
     
     % Initialize return variable
-    delta4.beams = cell(0);
+    delta4.Beams = cell(0);
 
     % Loop through content cell array, parsing
     i = 1;
@@ -171,22 +171,22 @@ if iscell(content)
             fields = regexp(strtrim(content{i}(9:end)), ...
                 '^(\S+)\s+(.+)$', 'tokens');
             delta4.ID = fields{1}{1};
-            delta4.name = fields{1}{2};
+            delta4.Name = fields{1}{2};
             b = false;
 
         % Store plan name
         elseif startsWith(content{i}, 'Plan:')
-            delta4.plan = strtrim(content{i}(6:end));
+            delta4.Plan = strtrim(content{i}(6:end));
 
         % Store beam name
         elseif startsWith(content{i}, 'Beam:')
-            delta4.beams{length(delta4.beams)+1}.name = ...
+            delta4.Beams{length(delta4.Beams)+1}.name = ...
                 strtrim(content{i}(6:end));
             b = true;
 
         % Store value specifier
         elseif startsWith(content{i}, 'Intensity values:')
-            delta4.beams{length(delta4.beams)}.value = ...
+            delta4.Beams{length(delta4.Beams)}.Value = ...
                 strtrim(content{i}(18:end));
 
         % Store distances
@@ -231,16 +231,16 @@ if iscell(content)
             end
 
             % Scale data to Gy
-            if contains(delta4.beams{length(delta4.beams)}.value, '[cGy]', ...
+            if contains(delta4.Beams{length(delta4.Beams)}.Value, '[cGy]', ...
                     'IgnoreCase', true)
                 data(:,5) = data(:,5)/100;
             end
 
             % Store beam or plan data 
             if b
-                delta4.beams{length(delta4.beams)}.data = data;
+                delta4.Beams{length(delta4.Beams)}.Data = data;
             else
-                delta4.data = data;
+                delta4.Data = data;
             end
             i = i - 1;
         end
@@ -251,26 +251,26 @@ if iscell(content)
 end
 
 % Remove empty beam names
-for i = 1:length(delta4.beams)
-    if ~isfield(delta4.beams{i}, 'name')
-        if isfield(delta4.beams{i}, 'value')
-            delta4.value = delta4.beams{i}.value;
+for i = 1:length(delta4.Beams)
+    if ~isfield(delta4.Beams{i}, 'name')
+        if isfield(delta4.Beams{i}, 'value')
+            delta4.Value = delta4.Beams{i}.Value;
         end
-        delta4.beams{i} = []; 
+        delta4.Beams{i} = []; 
     end
 end
-delta4.beams = delta4.beams(~cellfun(@isempty, delta4.beams));
+delta4.Beams = delta4.Beams(~cellfun(@isempty, delta4.Beams));
 
 % If a plan data is not present, compute it
-if ~isfield(delta4, 'data') && length(delta4.beams) >= 1 ...
-        && isfield(delta4.beams{1}, 'data') && ...
-        isfield(delta4.beams{1}, 'value') && contains(delta4.beams{1}.value, ...
+if ~isfield(delta4, 'data') && length(delta4.Beams) >= 1 ...
+        && isfield(delta4.Beams{1}, 'data') && ...
+        isfield(delta4.Beams{1}, 'value') && contains(delta4.Beams{1}.Value, ...
         'Absolute dose', 'IgnoreCase', true)
-    delta4.data = delta4.beams{1}.data;
-    delta4.value = delta4.beams{1}.value;
-    for i = 2:length(delta4.beams)
-        if isfield(delta4.beams{i}, 'data')
-            delta4.data(:,5) = delta4.data(:,5) + delta4.beams{i}.data(:,5);
+    delta4.Data = delta4.Beams{1}.Data;
+    delta4.Value = delta4.Beams{1}.Value;
+    for i = 2:length(delta4.Beams)
+        if isfield(delta4.Beams{i}, 'data')
+            delta4.Data(:,5) = delta4.Data(:,5) + delta4.Beams{i}.Data(:,5);
         end
     end
 end
@@ -280,21 +280,21 @@ if opt.CenterPhantom == 1
     
     % Center plan data
     if isfield(delta4, 'data')
-        delta4.data(:,2) = delta4.data(:,2) - ...
-            (max(delta4.data(:,2)) + min(delta4.data(:,2)))/2;
-        delta4.data(:,4) = delta4.data(:,4) - ...
-            (max(delta4.data(:,4)) + min(delta4.data(:,4)))/2;
+        delta4.Data(:,2) = delta4.Data(:,2) - ...
+            (max(delta4.Data(:,2)) + min(delta4.Data(:,2)))/2;
+        delta4.Data(:,4) = delta4.Data(:,4) - ...
+            (max(delta4.Data(:,4)) + min(delta4.Data(:,4)))/2;
     end
     
     % Center beams
-    for i = 1:length(delta4.beams)
-        if isfield(delta4.beams{i}, 'data')
-            delta4.beams{i}.data(:,2) = delta4.beams{i}.data(:,2) - ...
-                (max(delta4.beams{i}.data(:,2)) + ...
-                min(delta4.beams{i}.data(:,2)))/2;
-            delta4.beams{i}.data(:,4) = delta4.beams{i}.data(:,4) - ...
-                (max(delta4.beams{i}.data(:,4)) + ...
-                min(delta4.beams{i}.data(:,4)))/2;
+    for i = 1:length(delta4.Beams)
+        if isfield(delta4.Beams{i}, 'data')
+            delta4.Beams{i}.Data(:,2) = delta4.Beams{i}.Data(:,2) - ...
+                (max(delta4.Beams{i}.Data(:,2)) + ...
+                min(delta4.Beams{i}.Data(:,2)))/2;
+            delta4.Beams{i}.Data(:,4) = delta4.Beams{i}.Data(:,4) - ...
+                (max(delta4.Beams{i}.Data(:,4)) + ...
+                min(delta4.Beams{i}.Data(:,4)))/2;
         end
     end
 end

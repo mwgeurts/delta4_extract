@@ -1,60 +1,47 @@
 function delta4 = ParseD4Report(content)
 % ParseD4Report reads a ScandiDos Delta4 report into a MATLAB structure.
 % The function input argument can either be a string containing a file path
-% and/or name corresponding to a report PDF file, or a cell array of text 
+% and/or Name corresponding to a report PDF file, or a cell array of text 
 % data from that PDF. If a PDF file, this function will call XpdfText to
 % extract the file contents (via the xpdf_tools submodule).
 %
-% This function also searches the comments field for two possible inputs:
-% phantom name and delivered vs. expected MU (for TomoTherapy plans). The
-% function looks for a comment line containing the word "delta4", and if
-% present, will store the line under the "phantom" structure field. Second,
-% if a line contains two numbers separated by / (example, 3453/3456), the
-% first number will be stored as the cumulativeMU field, with the second
-% as the expectedMU field.
-%
 % Upon successful completion, this function will return a structure
 % containing the following fields:
-%   title: string containing report title
-%   name: string containing patient name
+%   Title: string containing report title
+%   Name: string containing patient name
 %   ID: string containing patient ID
-%   clinic: cell array containing clinic name and address
-%   plan: string containing plan name
-%   planDate: planned datetime
-%   planUser: string containing planned user (if present)
-%   measDate: measured datetime
-%   measUser: string containing planned user (if present)
-%   comments: cell array of comments
-%   phantom: string containing phantom name (if stored in comments),
-%       otherwise 'Unknown'
-%   cumulativeMU: double containing cumulative MU (if stored in comments)
-%   expectedMU: double containing expected MU (if stored in comments)
-%   machine: string containing radiation device
-%   temperature: double containing temperature
-%   reference: string containing reference (i.e. 'Planned Dose')
-%   normDose: double containing normalization dose, in Gy
-%   absPassRate: double containing absolute pass rate, as a percentage
-%   dtaPassRate: double containing DTA pass rate, as a percentage
-%   gammaPassRate: double containing Gamma pass rate, as a percentage
-%   doseDev: double containing median dose deviation, as a percentage
-%   beams: cell array of structures for each beam containing the following 
-%       fields: name, dailyCF, normDose, absPassRate, dtaPassRate, 
-%       gammaPassRate, and doseDev.
-%   absRange: 2 element vector of dose deviation range, as percentages
-%   absPassLimit: 2 element vector of dose deviation acceptance criteria,
+%   Clinic: cell array containing clinic name and address
+%   Plan: string containing plan name
+%   PlanDate: planned datetime
+%   PlanUser: string containing planned user (if present)
+%   MeasDate: measured datetime
+%   MeasUser: string containing planned user (if present)
+%   Comments: cell array of comments
+%   Temperature: double containing temperature
+%   Reference: string containing reference (i.e. 'Planned Dose')
+%   NormDose: double containing normalization dose, in Gy
+%   AbsPassRate: double containing Absolute pass rate, as a percentage
+%   DTAPassRate: double containing DTA pass rate, as a percentage
+%   GammaPassRate: double containing Gamma pass rate, as a percentage
+%   MedianAbsDiff: double containing median dose deviation, as a percentage
+%   Beams: table of each beams containing the following 
+%       columns: Name, DailyCF, NormDose, AbsPassRate, DTAPassRate, 
+%       GammaPassRate, and MedianAbsDiff.
+%   AbsRange: 2 element vector of dose deviation range, as percentages
+%   AbsPassLimit: 2 element vector of dose deviation acceptance criteria,
 %       as percentages (i.e. [90 3] means 90% within 3%)
-%   dtaRange: 2 element vector of DTA range, in %/mm
-%   dtaPassLimit: 2 element vector of DTA acceptance criteria, in % and mm
-%   gammaRange: 2 element vector of Gamma range
-%   gammaAbs: double containing Gamma absolute criterion as a percentage
-%   gammaDta: double containing Gamma DTA criterion in mm
-%   gammaPassLimit: 2 element vector of Gamma acceptance criteria (i.e.
+%   DTARange: 2 element vector of DTA range, in %/mm
+%   DTAPassLimit: 2 element vector of DTA acceptance criteria, in % and mm
+%   GammaRange: 2 element vector of Gamma range
+%   GammaAbs: double containing Gamma Absolute criterion as a percentage
+%   GammaDTA: double containing Gamma DTA criterion in mm
+%   GammaPassLimit: 2 element vector of Gamma acceptance criteria (i.e.
 %       [95 1] means 95% less than 1)
-%   gammaTable: structure containing Gamma Index Evaluation table (if
-%       present) with the following fields: dta, abs, passRate
+%   GammaTable: structure containing Gamma Index Evaluation table (if
+%       present) with the following fields: DTA, Abs, PassRate
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2017 University of Wisconsin Board of Regents
+% Copyright (C) 2018 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -69,7 +56,7 @@ function delta4 = ParseD4Report(content)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% If content is a file name (with PDF extension), read file contents in
+% If content is a file Name (with PDF extension), read file contents in
 if ~iscell(content) && endsWith(content, '.pdf', 'IgnoreCase',true)
     
     % Add xpdf_tools submodule to search path
@@ -108,24 +95,24 @@ end
 % Initialize empty return variable
 delta4 = struct;
 
-% If plan report is from version April 2016 or later
+% If Plan report is from version April 2016 or later
 if length(content{7}) >= 7 && strcmp(content{7}(1:7), 'Clinic:')
     
-    % Store title, patient name, and ID
-    delta4.title = strtrim(content{1});
-    delta4.name = strtrim(content{3});
+    % Store Title, patient Name, and ID
+    delta4.Title = strtrim(content{1});
+    delta4.Name = strtrim(content{3});
     delta4.ID = strtrim(content{5});
 
     % Initialize row counter
     r = 6;
     
 else 
-    % Store title and patient name
+    % Store Title and patient Name
     fields = strsplit(content{1}, '   ');
-    delta4.title = strtrim(fields{1});
-    delta4.name = strtrim(fields{2});
+    delta4.Title = strtrim(fields{1});
+    delta4.Name = strtrim(fields{2});
     for i = 3:length(fields)
-        delta4.name = [delta4.name, ' ', strtrim(fields{i})];
+        delta4.Name = [delta4.Name, ' ', strtrim(fields{i})];
     end
 
     % Store patient ID
@@ -135,48 +122,48 @@ else
     r = 4;
 end
 
-% Loop through rows until clinic info is found
+% Loop through rows until Clinic info is found
 while r < length(content)
     
     % If row starts with 'Clinic:'
     if length(content{r}) >= 7 && strcmp(content{r}(1:7), 'Clinic:')
         content{r} = content{r}(8:end);
-        delta4.clinic = cell(0);
+        delta4.Clinic = cell(0);
         break;
     else
         r = r + 1;
     end
 end
 
-% Store clinic contact info, followed by plan name
+% Store Clinic contact info, followed by Plan Name
 while r < length(content)
     
     % If row starts with 'Plan:'
     if length(content{r}) >= 5 && strcmp(content{r}(1:5), 'Plan:')
-        delta4.plan = strtrim(content{r}(6:end));
+        delta4.Plan = strtrim(content{r}(6:end));
         break;
     else
         if ~isempty(content{r})
-            delta4.clinic = vertcat(delta4.clinic, strtrim(content{r}));
+            delta4.Clinic = vertcat(delta4.Clinic, strtrim(content{r}));
         end
         r = r + 1;
     end
 end
 
-% Loop through rows until planned date info is found
+% Loop through rows until Planned date info is found
 while r < length(content)
     
     % If row starts with 'Planned:'
     if length(content{r}) >= 8 && strcmp(content{r}(1:8), 'Planned:')
         
-        % Store planned date
+        % Store Planned date
         fields = strsplit(content{r});
-        delta4.planDate = datetime([fields{2}, ' ', fields{3}, ' ', ...
+        delta4.PlanDate = datetime([fields{2}, ' ', fields{3}, ' ', ...
             fields{4}], 'InputFormat', 'M/d/yyyy h:m a');
         
         % Store user, if present
         if length(fields) > 4
-            delta4.planUser = fields{5};
+            delta4.PlanUser = fields{5};
         end
         
         break;
@@ -193,12 +180,12 @@ while r < length(content)
         
         % Store measured date
         fields = strsplit(content{r});
-        delta4.measDate = datetime([fields{2}, ' ', fields{3}, ' ', ...
+        delta4.MeasDate = datetime([fields{2}, ' ', fields{3}, ' ', ...
             fields{4}], 'InputFormat', 'M/d/yyyy h:m a');
         
         % Store user, if present
-        if length(fields) >= 4
-            delta4.measUser = fields{5};
+        if length(fields) > 4
+            delta4.MeasUser = fields{5};
         end
         
         break;
@@ -217,13 +204,13 @@ while r < length(content)
         
         % Store measured date
         fields = strsplit(content{r});
-        delta4.reviewStatus = fields{1}(1:end-1);
-        delta4.reviewDate = datetime([fields{2}, ' ', fields{3}, ' ', ...
+        delta4.ReviewStatus = fields{1}(1:end-1);
+        delta4.ReviewDate = datetime([fields{2}, ' ', fields{3}, ' ', ...
             fields{4}], 'InputFormat', 'M/d/yyyy h:m a');
         
         % Store user, if present
         if length(fields) > 4
-            delta4.reviewUser = fields{5};
+            delta4.ReviewUser = fields{5};
         end
         
         % Otherwise, move to next row
@@ -241,8 +228,8 @@ while r < length(content)
     end
 end
 
-% Store comments and look for treatment summary
-delta4.comments = cell(0);
+% Store Comments and look for treatment summary
+delta4.Comments = cell(0);
 while r < length(content)
     
     % If row is Treatment Summary
@@ -250,29 +237,10 @@ while r < length(content)
         break;
     else
         if ~isempty(content{r})
-            delta4.comments = vertcat(delta4.comments, ...
+            delta4.Comments = vertcat(delta4.Comments, ...
                 strtrim(content{r}));
         end
         r = r + 1;
-    end
-end
-
-% Initialize unknown phantom
-delta4.phantom = 'Unknown';
-
-% Search for specific tags in comments
-for i = 1:length(delta4.comments)
-    
-    % If phantom name is in the comments
-    if contains(delta4.comments{i}, 'delta4', 'IgnoreCase',true)
-        delta4.phantom = delta4.comments{i};
-   
-    % If cumulative/expected MU are in comments
-    elseif regexp(delta4.comments{i}, '([0-9]+)[ ]?/[ ]?([0-9]+)') > 0
-        fields = regexp(delta4.comments{i}, ...
-            '([0-9]+)[ ]?/[ ]?([0-9]+)', 'tokens');
-        delta4.cumulativeMU = str2double(fields{1}(1));
-        delta4.expectedMU = str2double(fields{1}(2));
     end
 end
 
@@ -282,14 +250,14 @@ while r < length(content)
     % If row starts with 'Radiation Device:'
     if length(content{r}) >= 17 && ...
             strcmp(content{r}(1:17), 'Radiation Device:')
-        delta4.machine = strtrim(content{r}(18:end));
+        delta4.Machine = strtrim(content{r}(18:end));
         break;
     else
         r = r + 1;
     end
 end
 
-% Look for and store temperature
+% Look for and store Temperature
 while r < length(content)
     
     % If row starts with 'Temperature:'
@@ -297,7 +265,7 @@ while r < length(content)
         fields = regexp(content{r}(13:end), '([0-9\.]+)', 'tokens');
         
         if ~isempty(fields)
-            delta4.temperature = str2double(fields{1}(1));
+            delta4.Temperature = str2double(fields{1}(1));
         end
         break;
     else
@@ -305,13 +273,13 @@ while r < length(content)
     end
 end
 
-% Look for and store dose reference
+% Look for and store dose Reference
 while r < length(content)
     
     % If row starts with 'Reference:'
     if length(content{r}) >= 10 && ...
             strcmp(content{r}(1:10), 'Reference:')
-        delta4.reference = strtrim(content{r}(11:end));
+        delta4.Reference = strtrim(content{r}(11:end));
         break;
     else
         r = r + 1;
@@ -328,14 +296,14 @@ while r < length(content)
         fields = regexp(content{r}(9:end), ['([0-9\.]+) +(c?Gy) +([0-9\.]', ...
             '+)% +([0-9\.]+)% +([0-9\.]+)% +(-?[0-9\.]+)%'], 'tokens');
         if strcmp(fields{1}(2), 'cGy')
-            delta4.normDose = str2double(fields{1}(1))/100;
+            delta4.NormDose = str2double(fields{1}(1))/100;
         else
-            delta4.normDose = str2double(fields{1}(1));
+            delta4.NormDose = str2double(fields{1}(1));
         end
-        delta4.absPassRate = str2double(fields{1}(3));
-        delta4.dtaPassRate = str2double(fields{1}(4));
-        delta4.gammaPassRate = str2double(fields{1}(5));
-        delta4.doseDev = str2double(fields{1}(6));
+        delta4.AbsPassRate = str2double(fields{1}(3));
+        delta4.DTAPassRate = str2double(fields{1}(4));
+        delta4.GammaPassRate = str2double(fields{1}(5));
+        delta4.MedianAbsDiff = str2double(fields{1}(6));
         r = r + 1;
         break;
     else
@@ -343,8 +311,12 @@ while r < length(content)
     end
 end
 
-% Initialize beams counter
-b = 0;
+% Initialize Beams table
+delta4.Beams = array2table(zeros(0,8), 'VariableNames', {'Name', 'Energy', ...
+    'DailyCF', 'NormDose', 'AbsPassRate', 'DTAPassRate', 'GammaPassRate', ...
+    'MedianAbsDiff'});
+delta4.Beams.Properties.VariableUnits = {'', 'MV', '', 'Gy', '%', '%', ...
+    '%', '%'};
 
 % Look for and store beam statistics
 while r < length(content)
@@ -355,33 +327,36 @@ while r < length(content)
     else
         
         % If beam data exists
-        if ~isempty(regexp(content{r}, ['([0-9\.]+) +([0-9\.]+) +(c?Gy) ', ...
-                '+([0-9\.]+)% +([0-9\.]+)% +([0-9\.]+)% +(-?[0-9\.]+)%'], ...
-                'ONCE'))
-            
-            % Increment beam counter
-            b = b + 1;
-            
-            % Parse beam name
-            delta4.beams{b,1}.name = regexp(strtrim(content{r}), '\S+', ...
-                'match', 'once');
+        if ~isempty(regexp(content{r}, ['([0-9]+) MV([0-9 MV,F\.]+)([0-9\.]+) ', ...
+                '+([0-9\.]+) +(c?Gy) +([0-9\.]+)% +([0-9\.]+)% ', ...
+                '+([0-9\.]+)% +(-?[0-9\.]+)%'], 'ONCE'))
             
             % Parse beam data
-            fields = regexp(content{r}, ['([0-9\.]+) +([0-9\.]+) +(c?Gy) ', ...
-                '+([0-9\.]+)% +([0-9\.]+)% +([0-9\.]+)% +(-?[0-9\.]+)%'], ...
-                'tokens');
+            fields = regexp(content{r}, ['([0-9]+) MV([0-9 MV,F\.]+)([0-9\.]+) ', ...
+                '+([0-9\.]+) +(c?Gy) +([0-9\.]+)% +([0-9\.]+)% ', ...
+                '+([0-9\.]+)% +(-?[0-9\.]+)%'], 'tokens');
             
-            % Store beam data
-            delta4.beams{b,1}.dailyCF = str2double(fields{1}(1));
-            if strcmp(fields{1}(3), 'cGy')
-                delta4.beams{b,1}.normDose = str2double(fields{1}(1))/100;
+            % Store number and FFF flag
+            e = [fields{1}{1}, regexprep([fields{1}{2}, fields{1}{3}], ...
+                '[0-9\., ]+', '')];
+            
+            % Store CF (correcting for bad parsing)
+            cf = regexprep([fields{1}{2}, fields{1}{3}], ...
+                '[^0-9\.]+', '');
+            cf = str2double(cf);
+            
+            % Convert norm dose to Gy
+            if strcmp(fields{1}{5}, 'cGy')
+                n = str2double(fields{1}{4})/100;
             else
-                delta4.beams{b,1}.normDose = str2double(fields{1}(1));
+                n = str2double(fields{1}{4});
             end
-            delta4.beams{b,1}.absPassRate = str2double(fields{1}(4));
-            delta4.beams{b,1}.dtaPassRate = str2double(fields{1}(5));
-            delta4.beams{b,1}.gammaPassRate = str2double(fields{1}(6));
-            delta4.beams{b,1}.doseDev = str2double(fields{1}(7));
+            
+            % Append beam row
+            delta4.Beams = [delta4.Beams; [{regexp(strtrim(content{r}), ...
+                '\S+', 'match', 'once')}, e, cf, n, ...
+                str2double(fields{1}{6}), str2double(fields{1}{7}), ...
+                str2double(fields{1}{8}), str2double(fields{1}{9})]];
         end
         r = r + 1;
     end
@@ -399,8 +374,8 @@ while r < length(content)
     if ~isempty(regexp(content{r}, 'Gamma\s+Index\s+Evaluations', 'ONCE'))
         
         % Initialize gamma table
-        delta4.gammaTable.dta = [];
-        delta4.gammaTable.passRate = [];
+        dta = [];
+        data = [];
         r = r + 1;
         
         % Loop through Gamma table
@@ -410,21 +385,22 @@ while r < length(content)
             if ~isempty(regexp(content{r}, ...
                     '([0-9\.]+ mm)\s+([0-9\.]+\s+)+', 'ONCE'))
                 fields = regexp(content{r}, '([0-9\.]+)', 'tokens');
-                delta4.gammaTable.dta(length(delta4.gammaTable.dta)+1) = ...
-                    str2double(fields{1}{1}); %#ok<*AGROW>
-                delta4.gammaTable.passRate(size(delta4.gammaTable.passRate,1)+1,:) = ...
-                    zeros(1, length(fields)-1);
-                for i = 1:size(delta4.gammaTable.passRate,2)
-                    delta4.gammaTable.passRate(size(...
-                        delta4.gammaTable.passRate,1),i) = ...
+                dta(length(dta)+1) = str2double(fields{1}{1}); %#ok<*AGROW>
+                data(size(data,1)+1,:) = zeros(1, length(fields)-1);
+                for i = 1:size(data,2)
+                    data(size(data,1),i) = ...
                         str2double(fields{1+i}{1});
                 end
                 
             elseif ~isempty(regexp(content{r}, '([0-9\.]+ %)+', 'ONCE'))
                 fields = regexp(content{r}, '([0-9\.]+) %', 'tokens');
-                delta4.gammaTable.abs = zeros(1, length(fields));
+                delta4.GammaTable = array2table(data);
+                delta4.GammaTable.Properties.UserData.GammaDTA = dta;
+                delta4.GammaTable.Properties.UserData.GammaAbs = ...
+                    zeros(1, length(fields));
                 for i = 1:length(fields)
-                    delta4.gammaTable.abs(i) = str2double(fields{i}{1});
+                    delta4.GammaTable.Properties.UserData.GammaAbs(i) = ...
+                        str2double(fields{i}{1});
                 end
                 break;
                 
@@ -440,7 +416,8 @@ while r < length(content)
         r = r + 1;
     end
     
-    
+    % Clear temporary variables
+    clear dta data;
 end
 
 % Look for and store dose deviation parameters
@@ -455,10 +432,10 @@ while r < length(content)
             '+)%[^0-9]+([0-9\.]+)%[^0-9]+([0-9\.]+)%'], 'tokens');
         
         % Store dose data
-        delta4.absRange(1) = str2double(fields{1}(1));
-        delta4.absRange(2) = str2double(fields{1}(2));
-        delta4.absPassLimit(1) = str2double(fields{1}(3));
-        delta4.absPassLimit(2) = str2double(fields{1}(4));
+        delta4.AbsRange(1) = str2double(fields{1}(1));
+        delta4.AbsRange(2) = str2double(fields{1}(2));
+        delta4.AbsPassLimit(1) = str2double(fields{1}(3));
+        delta4.AbsPassLimit(2) = str2double(fields{1}(4));
         r = r + 1;
         break;
     else
@@ -478,10 +455,10 @@ while r < length(content)
             '+)%[^0-9]+([0-9\.]+)'], 'tokens');
         
         % Store DTA data
-        delta4.dtaRange(1) = str2double(fields{1}(1));
-        delta4.dtaRange(2) = inf;
-        delta4.dtaPassLimit(1) = str2double(fields{1}(2));
-        delta4.dtaPassLimit(2) = str2double(fields{1}(3));
+        delta4.DTARange(1) = str2double(fields{1}(1));
+        delta4.DTARange(2) = inf;
+        delta4.DTAPassLimit(1) = str2double(fields{1}(2));
+        delta4.DTAPassLimit(2) = str2double(fields{1}(3));
         r = r + 1;
         break;
     else
@@ -502,12 +479,12 @@ while r < length(content)
             '%[^0-9]+([0-9\.]+)'], 'tokens');
         
         % Store Gamma data
-        delta4.gammaRange(1) = str2double(fields{1}(1));
-        delta4.gammaRange(2) = str2double(fields{1}(2));
-        delta4.gammaAbs = str2double(fields{1}(3));
-        delta4.gammaDta = str2double(fields{1}(4));
-        delta4.gammaPassLimit(1) = str2double(fields{1}(5));
-        delta4.gammaPassLimit(2) = str2double(fields{1}(6));
+        delta4.GammaRange(1) = str2double(fields{1}(1));
+        delta4.GammaRange(2) = str2double(fields{1}(2));
+        delta4.GammaAbs = str2double(fields{1}(3));
+        delta4.GammaDTA = str2double(fields{1}(4));
+        delta4.GammaPassLimit(1) = str2double(fields{1}(5));
+        delta4.GammaPassLimit(2) = str2double(fields{1}(6));
         break;
     else
         r = r + 1;

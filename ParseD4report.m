@@ -109,8 +109,16 @@ if length(content{7}) >= 7 && strcmp(content{7}(1:7), 'Clinic:')
 else 
     % Store Title and patient Name
     fields = strsplit(content{1}, '   ');
-    delta4.Title = strtrim(fields{1});
-    delta4.Name = strtrim(fields{2});
+    if ~isempty(fields)
+        delta4.Title = strtrim(fields{1});
+    else
+        delta4.Title = '';
+    end
+    if length(fields) > 1
+        delta4.Name = strtrim(fields{2});
+    else
+        delta4.Name = '';
+    end
     for i = 3:length(fields)
         delta4.Name = [delta4.Name, ' ', strtrim(fields{i})];
     end

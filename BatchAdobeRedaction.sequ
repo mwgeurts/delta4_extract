@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="http://ns.adobe.com/acrobat/workflow/2012" title="Batch Delta4 Report Redaction" description="" majorVersion="1" minorVersion="0">
+	<Sources defaultCommand="WorkflowPlaybackSelectFolder"/>
+	<Group label="Remove information">
+		<Command name="RemoveHiddenInfo" pauseBefore="false" promptUser="false">
+			<Items>
+				<Item name="RmAnnots" type="boolean" value="true"/>
+				<Item name="RmAttachments" type="boolean" value="true"/>
+				<Item name="RmBookmarks" type="boolean" value="true"/>
+				<Item name="RmDeletedContent" type="boolean" value="true"/>
+				<Item name="RmFormFields" type="boolean" value="true"/>
+				<Item name="RmHiddenLayers" type="boolean" value="true"/>
+				<Item name="RmHiddenText" type="boolean" value="true"/>
+				<Item name="RmLinksActionsJS" type="boolean" value="true"/>
+				<Item name="RmMetadata" type="boolean" value="true"/>
+				<Item name="RmOverlappingObjects" type="boolean" value="true"/>
+				<Item name="RmSearchIndex" type="boolean" value="true"/>
+			</Items>
+		</Command>
+	</Group>
+	<Group label="Redaction">
+		<Command name="JavaScript" pauseBefore="false" promptUser="true">
+			<Items>
+				<Item name="ScriptCode" type="text" value="/* Redact Delta4 Report Title, Patient Name, and ID */&#xD;for(var pg=0; pg&lt;this.numPages; pg++) {&#xD;    this.addAnnot({&#xD;&#x9;&#x9;type:&quot;Redact&quot;, page:pg,&#xD;&#x9;&#x9;quads:[[72, 722, 540, 722, 72, 669, 540, 669]],&#xD;&#x9;&#x9;overlayText: &quot;&quot;, alignment: 1,&#xD;&#x9;&#x9;repeat:false });&#xD;}"/>
+				<Item name="ScriptName" type="text" value=""/>
+			</Items>
+		</Command>
+		<Command name="Annots:Tool:ApplyRedactionsMenuItem" pauseBefore="false" promptUser="true"/>
+	</Group>
+	<Group label="Save">
+		<Command name="WorkflowPlaybackSaveFiles" pauseBefore="false" promptUser="false">
+			<Items>
+				<Item name="AddToBaseName" type="boolean" value="false"/>
+				<Item name="DocSaveDestType" type="string" value="WorkflowPlaybackSave"/>
+				<Item name="DontOverwrite" type="boolean" value="true"/>
+				<Item name="EmbedIndex" type="boolean" value="false"/>
+				<Item name="FileVariation" type="integer" value="0"/>
+				<Item name="HandleOutput" type="boolean" value="true"/>
+				<Item name="InsertAfterBaseName" type="text" value=""/>
+				<Item name="InsertBeforeBaseName" type="text" value=""/>
+				<Item name="NumbericNaming" type="boolean" value="false"/>
+				<Item name="OptimizePDF" type="boolean" value="true"/>
+				<Item name="PresetName" type="text" value="Standard"/>
+				<Item name="RunPDFOptimizer" type="boolean" value="false"/>
+			</Items>
+		</Command>
+		<Separator/>
+	</Group>
+</Workflow>

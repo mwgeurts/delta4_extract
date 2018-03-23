@@ -63,9 +63,9 @@ end
 % Verify results contains at least one plan
 if size(results.Plans,1) < 1
     if exist('Event', 'file') == 2
-        Event('No plans were found with matching dose data', 'WARN');
+        Event('No plans were found in the results array', 'WARN');
     else
-        warning('No plans were found with matching dose data');
+        warning('No plans were found in the results array');
     end
     return;
 end
@@ -201,8 +201,8 @@ for i = 1:size(groupCombs,1)
                 'k', 50, 'loc', 'median', 'sca', 'mad');
             results.Stats = [results.Stats; {results.Variables{j}, strjoin(g, ','), ...
                 length(x), min(x,[],3), median(x,3), mean(x,3), ...
-                trimmean(x,0.2,3), h, max(x,[],3), std(x,0,3), p, ...
-                mad(squeeze(x(k,l,:))), s, k}];
+                trimmean(x,0.2,3), h, max(x,[],3), std(x,0,3), ...
+                mad(squeeze(x(k,l,:))), p, s, k}];
         else
             x = results.Plans.(results.Variables{j})(match);
             if isempty(x)

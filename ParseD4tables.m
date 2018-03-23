@@ -87,7 +87,7 @@ if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase', true) || ...
                 
             % Store beam name
             elseif startsWith(txt{j,1}, 'Beam:')
-                delta4.Beams{i}.name = strtrim(txt{j,1}(6:end));
+                delta4.Beams{i}.Name = strtrim(txt{j,1}(6:end));
             
             % Store value specifier
             elseif startsWith(txt{j,1}, 'Intensity values:')
@@ -97,7 +97,7 @@ if ~iscell(content) && (endsWith(content, '.xlsx', 'IgnoreCase', true) || ...
         end
         
         % If a beam name was not present, assume this is the plan data
-        if ~isfield(delta4.Beams{i}, 'name')
+        if ~isfield(delta4.Beams{i}, 'Name')
             delta4.Data = [];
             for j = 5:size(num,1)
                 for k = 2:size(num,2)
@@ -180,7 +180,7 @@ if iscell(content)
 
         % Store beam name
         elseif startsWith(content{i}, 'Beam:')
-            delta4.Beams{length(delta4.Beams)+1}.name = ...
+            delta4.Beams{length(delta4.Beams)+1}.Name = ...
                 strtrim(content{i}(6:end));
             b = true;
 
@@ -252,8 +252,8 @@ end
 
 % Remove empty beam names
 for i = 1:length(delta4.Beams)
-    if ~isfield(delta4.Beams{i}, 'name')
-        if isfield(delta4.Beams{i}, 'value')
+    if ~isfield(delta4.Beams{i}, 'Name')
+        if isfield(delta4.Beams{i}, 'Value')
             delta4.Value = delta4.Beams{i}.Value;
         end
         delta4.Beams{i} = []; 
@@ -262,14 +262,14 @@ end
 delta4.Beams = delta4.Beams(~cellfun(@isempty, delta4.Beams));
 
 % If a plan data is not present, compute it
-if ~isfield(delta4, 'data') && length(delta4.Beams) >= 1 ...
-        && isfield(delta4.Beams{1}, 'data') && ...
-        isfield(delta4.Beams{1}, 'value') && contains(delta4.Beams{1}.Value, ...
+if ~isfield(delta4, 'Data') && length(delta4.Beams) >= 1 ...
+        && isfield(delta4.Beams{1}, 'Data') && ...
+        isfield(delta4.Beams{1}, 'Value') && contains(delta4.Beams{1}.Value, ...
         'Absolute dose', 'IgnoreCase', true)
     delta4.Data = delta4.Beams{1}.Data;
     delta4.Value = delta4.Beams{1}.Value;
     for i = 2:length(delta4.Beams)
-        if isfield(delta4.Beams{i}, 'data')
+        if isfield(delta4.Beams{i}, 'Data')
             delta4.Data(:,5) = delta4.Data(:,5) + delta4.Beams{i}.Data(:,5);
         end
     end

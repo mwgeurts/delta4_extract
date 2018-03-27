@@ -62,14 +62,14 @@ function results = CompareD4Dose(varargin)
 %       reference dose to be included in absolute dose difference
 %   Plans: table with one row for each Plan matched to a dose volume
 %   Beams: table with one row for each beam matched to a dose volume
-%   Stats: table of the following parameter statistics (Gamma mean and pass 
-%       rate, median dose difference) for the full dataset as well as each
-%       subset: parameter, group, N (dataset size), min, median, mean,
-%       trimmean (using 0.2 threshold), max, sd, lilliefors normality
-%       p-value, skewness, and kurtosis. For this and other grouped
-%       statistics, the "group" column contains a description of the
-%       subset, where groups can be Machine, beam Energy, phantom
-%       Orientation, or Plan class.
+%   Stats: MATLAB table of basic statistics (min, max, mean, etc.), along
+%       with p-values from a Lilliefors normality test and a few robust
+%       statistics (trimmed mean, Huber M location estimate, MAD) for each
+%       variable being analyzed (Gamma Pass Rate, Median Absolute Dose
+%       Difference, etc.). Results are also computed for each dataset group
+%       (Machine, Energy, Plan Class, etc.) as well as each subgroup. The
+%       Group table column describes the grouping; examples include 'all'
+%       (all data) or 'Machine=TrueBeam,Energy=6FFF'.
 %   Levene: table p-values for Levene's test comparing variance between 
 %       groups, with each parameter as a column and each group category
 %       (Machine, Energy, etc.) as a row.

@@ -15,7 +15,7 @@ function results = CompareD4Dose(varargin)
 % return structure field results.Plans. The matching is then repeated for
 % each beam, using the beam name and storing the results to results.Beams.
 %
-% As part of the analysis, this function accepts a Name/Pair configuration
+% As part of the analysis, this function accepts a Name/Value configuration
 % option 'PlanClasses' with an n x 2 cell array of Plan class names and
 % associated case insensitive regular expressions to match to the Plan 
 % name. If provided, the function will attempt to categorize each 
@@ -45,6 +45,8 @@ function results = CompareD4Dose(varargin)
 %       above.
 %
 % Upon successful completion, a structure is returned with these fields:
+%   Alpha: the significance level used for hypothesis testing and
+%       confidence intervals
 %   GammaAbs: vector of absolute Gamma criteria evaluated, as a percent
 %   GammaDTA: vector of absolute Gamma criteria evaluated (together, with
 %       GammaAbs, this produces a 2D table of all permutations), in mm

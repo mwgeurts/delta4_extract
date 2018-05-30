@@ -326,13 +326,19 @@ for i = 1:length(meas)
     end
     
     % If the folder content is . or .. or a folder, skip to next file
-    if strcmp(meas(i).name, '.') || strcmp(meas(i).name, '..') ...
-            || meas(i).isdir == 1
+    if isstruct(meas(i)) && (strcmp(meas(i).name, '.') || ...
+            strcmp(meas(i).name, '..') || meas(i).isdir == 1)
         continue;
     end
     
     % Parse file extension
-    [path, name, ext] = fileparts(fullfile(meas(i).folder, meas(i).name));
+    if isstruct(meas(i))
+        [path, name, ext] = fileparts(fullfile(meas(i).folder, meas(i).name));
+    elseif iscell(meas(i))
+        [path, name, ext] = fileparts(meas{i});
+    else
+        [path, name, ext] = fileparts(meas(i));
+    end
     
     % If extension matches potential report format, try to parse it
     if ismember(lower(ext), {'.xlsx', '.xls', '.txt', '.csv'})

@@ -418,21 +418,21 @@ for i = 1:length(meas)
     if all(matched)
 
         % If all beams have the same energy, use that, otherwise report Mixed
-        if length(unique(ref{r}{matched(1),13})) == 1
-            energy = ref{r}{matched(1),13}{1};
+        if length(unique(ref{1}{matched(1),13})) == 1
+            energy = ref{1}{matched(1),13}{1};
         else
             energy = 'Mixed';
         end
         
         % Initialize results
         result = {[name, ext], delta4.Name, delta4.ID, delta4.Plan, ...
-            ref{r}{matched(1),12}{1}, energy, class, orient};
+            ref{1}{matched(1),12}{1}, energy, class, orient};
 
         % Loop through each reference
         for j = 1:length(matched)
             
             % Load dose
-            dose = LoadDICOMDose(ref{r}{matched(j),2}, ref{r}{matched(j),1});
+            dose = LoadDICOMDose(ref{j}{matched(j),2}, ref{j}{matched(j),1});
         
             % Set reference value
             switch results.RefDose
@@ -455,11 +455,11 @@ for i = 1:length(meas)
             % Log calculation
             if exist('Event', 'file') == 2
                 Event(['Computing plan Gamma table between ', name, ext, ...
-                    'and ', ref{r}{matched(j),1}]);
+                    'and ', ref{j}{matched(j),1}]);
             end
             
             % Append reference file and gamma table
-            result = [result, ref{r}{matched(j),1}, refval, ...
+            result = [result, ref{j}{matched(j),1}, refval, ...
                 gammaTable(delta4.Data, dose, refval, results), absvol, ...
                 gamvol]; %#ok<*AGROW>
         end

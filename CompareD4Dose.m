@@ -374,7 +374,7 @@ for i = 1:length(meas)
     class = 'Undefined';
     for j = 1:size(results.PlanClasses, 1)
         if ~isempty(regexpi(delta4.Plan, results.PlanClasses{j,2}))
-            class = results.PlanClasses{j,2};
+            class = results.PlanClasses{j,1};
             break;
         end
     end
